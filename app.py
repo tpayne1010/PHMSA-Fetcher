@@ -32,9 +32,15 @@ if st.button("Fetch and Search"):
         st.info("Downloading data... this might take a moment depending on the size of the folder.")
         
         try:
-            # 1. Download the ZIP file from the internet (Added a User-Agent header to bypass security)
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-            response = requests.get(zip_url, headers=headers)
+            # 1. Provide a highly detailed digital ID to bypass strict government firewalls
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Connection': 'keep-alive',
+                'Referer': 'https://www.phmsa.dot.gov/'
+            }
+            response = requests.get(zip_url, headers=headers, timeout=30)
             response.raise_for_status() # Check if the download was successful
             
             # 2. Open the downloaded ZIP folder in memory
