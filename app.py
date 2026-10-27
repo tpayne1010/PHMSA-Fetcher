@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import requests
 import zipfile
 import io
 
@@ -13,39 +12,27 @@ st.write("Welcome! This tool helps you find your client's specific data from the
 # Create a text box for the user to type the OPID
 opid_input = st.text_input("Enter the Operator Identification Number (OPID):")
 
-# Create a text box for the ZIP file URL 
-st.write("Because the PHMSA website updates its files, please paste the direct link to the ZIP folder below.")
-zip_url = st.text_input(
-    "Enter the URL for the PHMSA ZIP file:",
-    value="https://www.phmsa.dot.gov/sites/phmsa.dot.gov/files/data_statistics/pipeline/PHMSA_Pipeline_Safety_Flagged_Incidents.zip"
-)
+# Provide instructions and a direct download link for the user
+st.write("Because the government firewall blocks automated downloads, please click the link below to download the ZIP folder to your computer, then upload it here.")
+st.markdown("[Click here to manually download the PHMSA ZIP file](https://www.phmsa.dot.gov/sites/phmsa.dot.gov/files/data_statistics/pipeline/PHMSA_Pipeline_Safety_Flagged_Incidents.zip)")
 
-# Create a button to start the download and search
-if st.button("Fetch and Search"):
-    # Check if the user filled in the boxes
+# Create a drag-and-drop file upload box
+uploaded_file = st.file_uploader("Upload the downloaded ZIP folder here:", type=["zip"])
+
+# Create a button to start the search
+if st.button("Search Data"):
+    # Check if the user filled in the box and uploaded the file
     if not opid_input:
         st.warning("Please enter an OPID to search for.")
-    elif not zip_url:
-        st.warning("Please enter the ZIP file URL.")
+    elif not uploaded_file:
+        st.warning("Please upload the ZIP file.")
     else:
-        # Let the user know the digital courier is working
-        st.info("Downloading data... this might take a moment depending on the size of the folder.")
+        st.info("Reading the uploaded folder...")
         
         try:
-            # 1. Provide a highly detailed digital ID to bypass strict government firewalls
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Connection': 'keep-alive',
-                'Referer': 'https://www.phmsa.dot.gov/'
-            }
-            response = requests.get(zip_url, headers=headers, timeout=30)
-            response.raise_for_status() # Check if the download was successful
-            
-            # 2. Open the downloaded ZIP folder in memory
-            with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                # 3. Look for a spreadsheet or text file inside the folder
+            # 1. Open the uploaded ZIP folder directly from the app
+            with zipfile.ZipFile(uploaded_file) as z:
+                # 2. Look for a spreadsheet or text file inside the folder
                 data_filename = None
                 for filename in z.namelist():
                     if filename.endswith('.csv') or filename.endswith('.txt'):
@@ -55,7 +42,7 @@ if st.button("Fetch and Search"):
                 if data_filename:
                     st.success(f"Successfully opened the folder and found the data file: {data_filename}")
                     
-                    # 4. Read the data into a digital table
+                    # 3. Read the data into a digital table
                     with z.open(data_filename) as f:
                         # Try to read it, automatically guessing the formatting
                         try:
@@ -65,7 +52,7 @@ if st.button("Fetch and Search"):
                             f.seek(0)
                             df = pd.read_csv(f, sep='\t', dtype=str)
                     
-                    # 5. Look for the column that contains the Operator ID
+                    # 4. Look for the column that contains the Operator ID
                     opid_col = None
                     for col in df.columns:
                         # Government data columns vary, so we look for common names
@@ -74,7 +61,7 @@ if st.button("Fetch and Search"):
                             break
                     
                     if opid_col:
-                        # 6. Filter the table to only show rows matching the client's OPID
+                        # 5. Filter the table to only show rows matching the client's OPID
                         client_data = df[df[opid_col] == opid_input]
                         
                         if client_data.empty:
@@ -89,8 +76,8 @@ if st.button("Fetch and Search"):
                         st.dataframe(df.head())
                         
                 else:
-                    st.error("Could not find a usable data file (.csv or .txt) inside the downloaded ZIP folder.")
+                    st.error("Could not find a usable data file (.csv or .txt) inside the uploaded ZIP folder.")
                     
         except Exception as e:
-            # If anything goes wrong (like a bad link), tell the user safely
-            st.error(f"An error occurred while fetching or processing the data: {e}")
+            # If anything goes wrong with the file, tell the user safely
+            st.error(f"An error occurred while processing the file: {e}")
